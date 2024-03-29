@@ -12,7 +12,7 @@ typedef struct header_t header_t;
 
 struct header_t
 {
-    int free;
+    unsigned int free;
     header_t *next;
     size_t size;
 };
@@ -26,9 +26,6 @@ header_t *getExistingSpace(size_t size)
 
     while (p)
     {
-        printf("The pointer is %zu\n", (size_t)p);
-        printf("The pointer is free %d\n", p->free);
-
         if (p->size >= size && p->free)
         {
             p->free = 0;
@@ -47,8 +44,6 @@ void free(void *ptr)
     {
         _exit(0);
     }
-
-    printf("The freed pointer is %zu\n", (size_t)p);
     p->free = 1;
 }
 
@@ -72,23 +67,19 @@ void *my_malloc(size_t size)
 
         if (!head)
         {
-            printf("First time allocation\n");
-
             head = p;
             tail = p;
             printf("%zu\n", (size_t)p);
         }
         else
         {
-            printf("Added to Tail\n");
-            tail->next = p;
+                        tail->next = p;
             tail = p;
         }
         return p + 1;
     }
     else
     {
-        printf("Not First time allocation\n");
         return p;
     }
 }
@@ -106,9 +97,5 @@ int main(void)
         free(r);
     }
 
-    const size_t cp = (size_t)sbrk(1024);
-    const size_t addR = (size_t)r;
-
-    printf("%zu ------ %zu ----- diff:%zu --- div/1024 -----%zu\n", addR, cp, cp - addR, (cp - addR) / 1024);
     return 0;
 }
