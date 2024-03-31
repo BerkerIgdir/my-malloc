@@ -1,101 +1,138 @@
 #include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 #include <unistd.h>
 
-#ifdef _WIN32
-#include <synchapi.h>
-#elif __linux__
-#include <unistd.h>
-#endif
 
 struct header_t;
 typedef struct header_t header_t;
 
-struct header_t
-{
-    unsigned int free;
+struct header_t {
+    uint8_t free;
     header_t *next;
     size_t size;
 };
 
-header_t *head = (header_t *)0;
-header_t *tail = (header_t *)0;
+#define HEADER_SIZE sizeof(struct header_t)
 
-header_t *getExistingSpace(size_t size)
-{
+header_t *head = (header_t *) 0;
+header_t *tail = (header_t *) 0;
+
+header_t *getExistingSpace(size_t size) {
     header_t *p = head;
 
-    while (p)
-    {
-        if (p->size >= size && p->free)
-        {
+    while (p) {
+        if (p->size >= size && p->free) {
             p->free = 0;
-            return p + 1;
+            return p;
         }
         p = p->next;
     }
     return 0;
 }
 
-void free(void *ptr)
-{
-    header_t *p = (header_t *)ptr - 1;
+void free(void *ptr) {
 
-    if (!p)
-    {
-        _exit(0);
+    if (!ptr) {
+        return;
     }
+
+    header_t *p = (header_t *) ptr - 1;
+
     p->free = 1;
 }
 
-void *my_malloc(size_t size)
-{
+void *malloc(size_t size) {
+    if (!size) {
+        return NULL;
+    }
+
     header_t *p = getExistingSpace(size);
 
-    if (!p)
-    {
-        const void *const block = sbrk(sizeof(header_t) + size);
+    if (!p) {
+        const void *const block = sbrk(HEADER_SIZE + size);
 
-        if ((void *)-1 == block)
-        {
-            return (void *)0;
+        if ((void *) -1 == block) {
+            return NULL;
         }
 
-        p = (header_t *)block;
+        p = (header_t *) block;
         p->free = 0;
         p->next = 0;
         p->size = size;
 
-        if (!head)
-        {
+        if (!head) {
             head = p;
             tail = p;
-            printf("%zu\n", (size_t)p);
-        }
-        else
-        {
-                        tail->next = p;
+        } else {
+            tail->next = p;
             tail = p;
         }
-        return p + 1;
-    }
-    else
-    {
-        return p;
+
+        return (void *) (p + 1);
+    } else {
+        return (void *) (p + 1);
     }
 }
 
-int main(void)
-{
-    void *r;
-
-    for (size_t i = 0; i < 4; i++)
-    {
-        r = my_malloc(1024);
-
-        // sleep(3);
-
-        free(r);
+void *realloc(void *base, size_t size) {
+    if (!base) {
+        return malloc(size);
     }
 
-    return 0;
+    header_t *tmp = (header_t *) base - 1;
+
+    const size_t oldSize = tmp->size;
+
+    if (oldSize >= size) {
+        return base;
+    }
+
+    tmp = malloc(size);
+
+    if (!tmp) {
+        return NULL;
+    }
+
+    memcpy(tmp, base, oldSize);
+
+    free(base);
+
+    base = (void *) (tmp);
+
+    return base;
 }
+
+void *calloc(size_t elmnt, size_t elSize) {
+    if (!elSize) {
+        return NULL;
+    }
+
+    size_t realSize = elmnt * elSize;
+
+    void *temp = malloc(realSize);
+
+    if (!temp) {
+        return (void *) 0;
+    }
+
+    memset(temp, 0, realSize);
+
+    return (header_t *) temp;
+}
+
+//int main(void) {
+//    void *r = NULL;
+//
+//    for (size_t i = 0; i < 4; i++) {
+//        // r = malloc(1024);
+//
+//        // sleep(3);
+//
+//        r = realloc(r, 2048);
+//
+//        free(r);
+//    }
+//
+//    return 0;
+//}
