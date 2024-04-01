@@ -1,8 +1,7 @@
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <pthread.h>
 
 struct header_t;
 typedef struct header_t header_t;
@@ -17,6 +16,8 @@ struct header_t {
 
 header_t *head = (header_t *) 0;
 header_t *tail = (header_t *) 0;
+
+pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 header_t *getExistingSpace(size_t size) {
     header_t *p = head;
@@ -33,6 +34,8 @@ header_t *getExistingSpace(size_t size) {
 
 void free(void *ptr) {
 
+    pthread_mutex_lock(&mut);
+
     if (!ptr) {
         return;
     }
@@ -40,13 +43,14 @@ void free(void *ptr) {
     header_t *p = (header_t *) ptr - 1;
 
     p->free = 1;
+    pthread_mutex_unlock(&mut);
 }
 
 void *malloc(size_t size) {
     if (!size) {
         return NULL;
     }
-
+    pthread_mutex_lock(&mut);
     header_t *p = getExistingSpace(size);
 
     if (!p) {
@@ -68,9 +72,10 @@ void *malloc(size_t size) {
             tail->next = p;
             tail = p;
         }
-
+        pthread_mutex_unlock(&mut);
         return (void *) (p + 1);
     } else {
+        pthread_mutex_unlock(&mut);
         return (void *) (p + 1);
     }
 }
@@ -98,9 +103,7 @@ void *realloc(void *base, size_t size) {
 
     free(base);
 
-    base = (void *) (tmp);
-
-    return base;
+    return (void *) (tmp);
 }
 
 void *calloc(size_t elmnt, size_t elSize) {
