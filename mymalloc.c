@@ -36,11 +36,17 @@ void free(void *ptr) {
 
     pthread_mutex_lock(&mut);
 
+
     if (!ptr) {
         return;
     }
 
     header_t *p = (header_t *) ptr - 1;
+    const void *currentHeapPoint = sbrk(0);
+
+    if ((currentHeapPoint - (p->size + HEADER_SIZE)) == p) {
+        sbrk(-((intptr_t) p->size));
+    }
 
     p->free = 1;
     pthread_mutex_unlock(&mut);
@@ -50,6 +56,7 @@ void *malloc(size_t size) {
     if (!size) {
         return NULL;
     }
+
     pthread_mutex_lock(&mut);
     header_t *p = getExistingSpace(size);
 
@@ -124,18 +131,18 @@ void *calloc(size_t elmnt, size_t elSize) {
     return (header_t *) temp;
 }
 
-//int main(void) {
-//    void *r = NULL;
-//
-//    for (size_t i = 0; i < 4; i++) {
-//        // r = malloc(1024);
-//
-//        // sleep(3);
-//
-//        r = realloc(r, 2048);
-//
-//        free(r);
-//    }
-//
-//    return 0;
-//}
+int main(void) {
+    void *r = NULL;
+
+    for (size_t i = 0; i < 4; i++) {
+        // r = malloc(1024);
+
+        // sleep(3);
+
+        r = realloc(r, 2048);
+
+        free(r);
+    }
+
+    return 0;
+}
